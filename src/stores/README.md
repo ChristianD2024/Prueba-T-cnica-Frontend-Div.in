@@ -1,4 +1,4 @@
-# Prueba-T-cnica-Frontend-Div.inEste proyecto es una aplicación web para gestionar un listado de vehículos, con funcionalidades de filtrado, ordenamiento, paginación y navegación a detalles. Construida con Vue 3 y Pinia para el estado reactivo, utiliza datos simulados para demostración (puede integrarse con una API real).
+Este proyecto es una aplicación web para gestionar un listado de vehículos, con funcionalidades de filtrado, ordenamiento, paginación y navegación a detalles. Construida con Vue 3 y Pinia para el estado reactivo, utiliza datos simulados para demostración (puede integrarse con una API real).
 
 Requisitos previos:
 Node.js (versión 18 o superior recomendada).
