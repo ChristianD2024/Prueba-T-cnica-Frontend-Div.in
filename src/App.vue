@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-// No necesitas importar nada aquí por ahora
+
 </script>
 
 <style>
