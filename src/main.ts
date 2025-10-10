@@ -3,7 +3,7 @@ import App from './App.vue'
 
 // Importar Pinia y Vue Router
 import { createPinia } from 'pinia'
-import router from './router'  // Lo crearemos en el siguiente paso
+import router from './router' 
 
 import 'leaflet/dist/leaflet.css'
 

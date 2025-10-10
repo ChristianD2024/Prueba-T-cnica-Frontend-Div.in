@@ -13,19 +13,17 @@
       <button @click="reloadVehicles">Reintentar</button>
     </div>
 
-    <!-- Sin resultados -->
-    <div v-else-if="vehicles.length === 0" class="no-results">
-      <p>No hay vehículos para mostrar.</p>
+    <div v-else-if="paginatedVehicles.length === 0" class="no-results">
+      <p>No se encontraron vehículos con los filtros aplicados.</p>
+      <p class="debug-info">
+        Debug: Filtrados={{ filteredVehicles.length }} | Total={{ vehiclesTotal }} | Paginados={{ paginatedVehicles.length }} (Página {{ page }} / {{ totalPages }})
+      </p>
+      <button @click="clearFilters">Limpiar filtros</button>  <!-- Botón directo -->
     </div>
 
-    <!-- Tabla de vehículos -->
+    <!-- Tabla: Key agresiva en table y tbody -->
     <div v-else>
-      <!-- Opcional: eliminar o comentar este pre en producción -->
-      <!-- <pre style="background: #f0f0f0; padding: 1rem; max-height: 300px; overflow: auto;">
-        {{ JSON.stringify(vehicles, null, 2) }}
-      </pre>  -->
-
-      <table>
+      <table :key="`tabla-full-${filteredVehicles.length}-${page}-${Date.now() % 10000}`">  <!-- Key con timestamp para force total re-render -->
         <thead>
           <tr>
             <th @click="sort('class')">Tipo de auto</th>
@@ -39,8 +37,8 @@
             <th @click="sort('combination_mpg')">Consumo mixto</th>
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="vehicle in vehicles" :key="vehicle.id" @click="$emit('select', vehicle)" tabindex="0" @keydown.enter="$emit('select', vehicle)">
+        <tbody :key="`tbody-${paginatedVehicles.length}-${filteredVehicles.length}`">  <!-- Key en tbody -->
+          <tr v-for="vehicle in paginatedVehicles" :key="vehicle.id + '-' + filteredVehicles.length" @click="$emit('select', vehicle)" tabindex="0" @keydown.enter="$emit('select', vehicle)">
             <td>{{ capitalizeWords(vehicle.class) }}</td>
             <td>{{ vehicle.fuel_type || '-' }}</td>
             <td>{{ vehicle.make || '-' }}</td>
@@ -60,31 +58,31 @@
         <span>Página {{ page }} de {{ totalPages }}</span>
         <button :disabled="page === totalPages" @click="changePage(page + 1)">Siguiente</button>
       </div>
+      <button v-else-if="filteredVehicles.length > 0" @click="clearFilters">Limpiar filtros</button> 
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useVehiclesStore } from '../stores/vehicles'
 
 const store = useVehiclesStore()
 
-const vehicles = computed(() => store.paginatedVehicles)
-
-watch(vehicles, (newVal) => {
-  console.log('Vehículos mostrados en tabla:', JSON.parse(JSON.stringify(newVal)))
-})
-
-onMounted(() => {
-  store.loadSimulatedVehicles()
-})
-
-
+// Computed (agrega filteredVehicles y vehiclesTotal para debug)
+const paginatedVehicles = computed(() => store.paginatedVehicles)
+const filteredVehicles = computed(() => store.filteredVehicles)  // Acceso directo para debug
+const vehiclesTotal = computed(() => store.vehicles.length)
 const loading = computed(() => store.loading)
 const error = computed(() => store.error)
 const page = computed(() => store.currentPage)
 const totalPages = computed(() => store.totalPages)
+// const currentPage = computed(() => store.currentPage)  // Para :key
+
+watch([filteredVehicles, paginatedVehicles], ([newFiltered, newPaginated]) => {
+  console.log('📋 TablaVehiculos watch: filtered to', newFiltered.length, 'paginated to', newPaginated.length, 'makes:', newPaginated.map(v => v.make || 'N/A'))
+}, { deep: true, immediate: true })  // immediate: true para log inicial
+
 
 function cleanValue(value: any) {
   if (value === 'this field is for premium subscribers only') return 'No disponible'
@@ -105,6 +103,11 @@ function mapTransmission(value: string) {
 function capitalizeWords(str: string) {
   if (!str) return '-'
   return str.replace(/\b\w/g, c => c.toUpperCase())
+}
+
+// Función clearFilters (emite o llama store)
+function clearFilters() {
+  store.clearFilters()
 }
 
 function sort(column: string) {
@@ -172,6 +175,12 @@ button:disabled {
   margin-bottom: 10px;
   border-radius: 4px;
 }
+.debug-info {
+  font-size: 0.8em;
+  color: #666;
+  font-style: italic;
+  margin-top: 0.5em;
+}
 @keyframes shimmer {
   0% {
     background-position: 200% 0;
@@ -185,4 +194,5 @@ button:disabled {
   font-style: italic;
   color: #666;
 }
+.debug-info { font-size: 0.8em; color: #666; margin: 0.5em 0; }
 </style>

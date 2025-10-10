@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'          // Importa la nueva página
+import Home from '../views/Home.vue'          
 import VehicleDetail from '../components/VehicleDetail.vue'
 
 const routes = [

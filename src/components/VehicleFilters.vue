@@ -1,7 +1,5 @@
 <template>
   <div class="filters-panel">
-    <h3>Filtros de vehículos</h3>
-
     <div class="filter-group">
       <label for="class">Clase:</label>
       <input id="class" type="text" v-model="localFilters.class" placeholder="Ej: compact car" />
@@ -44,28 +42,35 @@
     </div>
     <div v-if="localFilterErrors.cityMpg" class="error-message">{{ localFilterErrors.cityMpg }}</div>
 
-    <!-- Mostrar errores generales si hay -->
+    <!-- Errores generales -->
     <div v-if="hasLocalFilterErrors" class="error-message">
       <p>Hay errores en los filtros. Corrige para aplicar.</p>
     </div>
 
     <div class="buttons">
+      <!-- Botones emiten eventos para cerrar modal en padre -->
       <button :disabled="hasLocalFilterErrors" @click="applyFilters">Aplicar filtros</button>
       <button @click="clearAllFilters">Limpiar filtros</button>
     </div>
 
-    <!-- Debug: conteo de vehículos filtrados (usa store directamente para conteo) -->
+    <!-- Debug conteo -->
     <p class="filter-info">Vehículos mostrados: {{ store.filteredVehicles.length }} de {{ store.vehicles.length }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useVehiclesStore } from '@/stores/vehicles'
+
+// Define eventos que emite (para cerrar modal en VehicleList)
+const emit = defineEmits<{
+  apply: []
+  clear: []
+}>()
 
 const store = useVehiclesStore()
 
-// Filtros LOCALES (no mutan store hasta "Aplicar")
+// Local filters y errores
 const localFilters = ref({
   class: '',
   make: '',
@@ -77,7 +82,6 @@ const localFilters = ref({
   cityMpgMax: null as number | null
 })
 
-// Errores locales para validación antes de aplicar
 const localFilterErrors = ref({
   year: '',
   cityMpg: ''
@@ -87,23 +91,20 @@ const hasLocalFilterErrors = computed(() => {
   return localFilterErrors.value.year !== '' || localFilterErrors.value.cityMpg !== ''
 })
 
-// Watcher para validar filtros locales en tiempo real (sin aplicar al store)
+// Watch y validate
 watch(localFilters, () => {
   validateLocalFilters()
 }, { deep: true })
 
-// Validación local (similar a store.validateFilters)
 function validateLocalFilters() {
-  const errors: any = { year: '', cityMpg: '' }
+  const errors = { year: '', cityMpg: '' }
   
-  // Validar años
   if (localFilters.value.yearMin !== null && localFilters.value.yearMax !== null) {
     if (localFilters.value.yearMin > localFilters.value.yearMax) {
       errors.year = 'Año mínimo no puede ser mayor que el máximo'
     }
   }
   
-  // Validar MPG
   if (localFilters.value.cityMpgMin !== null && localFilters.value.cityMpgMax !== null) {
     if (localFilters.value.cityMpgMin > localFilters.value.cityMpgMax) {
       errors.cityMpg = 'Consumo mínimo no puede ser mayor que el máximo'
@@ -119,13 +120,14 @@ function applyFilters() {
     return
   }
   
-  // Aplica al store (resetea página y valida)
   store.setFilters(localFilters.value)
   console.log('Filtros aplicados desde local:', localFilters.value)
+  
+  // Emitir evento para cerrar modal
+  emit('apply')
 }
 
 function clearAllFilters() {
-  // Resetea locales y aplica al store
   localFilters.value = {
     class: '',
     make: '',
@@ -139,16 +141,15 @@ function clearAllFilters() {
   localFilterErrors.value = { year: '', cityMpg: '' }
   store.clearFilters()
   console.log('Filtros limpiados desde local')
+  
+  // Emitir evento para cerrar modal
+  emit('clear')
 }
 
-// Inicializa locales con valores del store al montar (opcional, para sincronizar)
-import { onMounted } from 'vue'
 onMounted(() => {
-  localFilters.value = { ...store.filters }
+  localFilters.value = { ...store.filters.value }
 })
 </script>
-
-<!-- Mantén el <style scoped> igual -->
 
 <style scoped>
 .filters-panel {
@@ -214,5 +215,12 @@ button:disabled {
 
 button:hover:not(:disabled) {
   background-color: #0056b3;
+}
+
+.filter-info {
+  font-size: 0.9em;
+  color: #666;
+  margin-top: 1em;
+  text-align: center;
 }
 </style>

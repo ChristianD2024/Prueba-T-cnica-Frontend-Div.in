@@ -3,21 +3,24 @@
     <!-- Título -->
     <h1>Listado de Vehículos</h1>
     
-    <!-- Componente de filtros -->
-    <VehicleFilters />
+    <!-- Botón para abrir modal de filtros -->
+    <button class="filters-toggle" @click="showModal = true">
+      Filtros ▼
+    </button>
 
+    <!-- Contenido principal: loading, error, tabla, paginación -->
     <div v-if="loading">Cargando vehículos...</div>
     <div v-else-if="error" class="error-message">{{ error }}</div>
     <div v-else>
-      <!-- DEBUG TEMPORAL: Muestra conteos para diagnosticar -->
+      <!-- DEBUG TEMPORAL -->
       <div class="debug-info" style="background: #f0f0f0; padding: 0.5rem; margin-bottom: 1rem; font-size: 0.9em;">
-        <p>Total vehículos: {{ store.vehicles.length }}</p>
-        <p>Filtrados: {{ store.filteredVehicles.length }}</p>
+        <p>Total vehículos: {{ vehicles.length }}</p>
+        <p>Filtrados: {{ filteredVehicles.length }}</p>
         <p>Paginados (visibles): {{ paginatedVehicles.length }} (Página {{ currentPage }} / {{ totalPages }})</p>
-        <!-- Quita esta div completa después de fixear -->
       </div>
 
-      <table class="vehicles-table">
+      <!-- Tabla -->
+      <table class="vehicles-table" :key="`list-table-${filteredVehicles.length}-${currentPage}`">
         <thead>
           <tr>
             <th @click="setSort('make')" class="sortable">
@@ -35,7 +38,7 @@
             <th>Ubicación (lat, lng)</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody :key="`list-tbody-${paginatedVehicles.length}-${filteredVehicles.length}`">
           <tr
             v-for="vehicle in paginatedVehicles"
             :key="vehicle.id"
@@ -50,7 +53,7 @@
             <td>{{ vehicle.latitude.toFixed(4) }}, {{ vehicle.longitude.toFixed(4) }}</td>
           </tr>
           <tr v-if="paginatedVehicles.length === 0">
-            <td colspan="5">No se encontraron vehículos con los filtros aplicados. (Debug: Filtrados={{ store.filteredVehicles.length }})</td>
+            <td colspan="5">No se encontraron vehículos con los filtros aplicados. (Debug: Filtrados={{ filteredVehicles.length }})</td>
           </tr>
         </tbody>
       </table>
@@ -61,18 +64,32 @@
         <button @click="setPage(currentPage + 1)" :disabled="currentPage === totalPages">Siguiente</button>
       </div>
     </div>
+
+    <!-- Modal de filtros -->
+    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Filtros de vehículos</h3>
+          <button class="close-btn" @click="showModal = false">×</button>
+        </div>
+        <!-- Contenido de filtros -->
+        <VehicleFilters @apply="handleApply" @clear="handleClear" />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch, toRefs, ref } from 'vue'  // + ref para showModal
 import { useRouter } from 'vue-router'
 import { useVehiclesStore } from '@/stores/vehicles'
 import VehicleFilters from './VehicleFilters.vue'
+import SortIcon from './SortIcon.vue'
 
 const store = useVehiclesStore()
 const router = useRouter()
 
+// Reactividad del store 
 const {
   loading,
   error,
@@ -81,65 +98,57 @@ const {
   totalPages,
   sortColumn,
   sortAsc,
-  setSort,
+  setSort: storeSetSort,
   setPage,
-  vehicles,      // Agrega esto para debug
-  filteredVehicles // Agrega esto para debug
-} = store
+  vehicles,
+  filteredVehicles,
+  loadSimulatedVehicles
+} = toRefs(store)
 
-// Exponer store para debug en template
-// (agrega estas líneas después de const { ... } = store)
+const setSort = storeSetSort.value
 
+// Estado para modal
+const showModal = ref(false)
+
+// Funciones para cerrar modal al aplicar/limpiar
+function handleApply() {
+  // Ya se aplicó en VehicleFilters (setFilters), solo cerrar
+  showModal.value = false
+}
+
+function handleClear() {
+  // Ya se limpió en VehicleFilters (clearFilters), solo cerrar
+  showModal.value = false
+}
+
+// (onMounted, watch, goToDetail, clearFilters)
 onMounted(() => {
-  store.loadSimulatedVehicles()
-  console.log('=== DEBUG VEHICLELIST onMounted ===')
-  console.log('Vehículos totales:', store.vehicles.length)
+  if (vehicles.value.length === 0) {
+    loadSimulatedVehicles.value()
+  }
+  console.log('=== VEHICLELIST onMounted - Datos cargados ===')
+  console.log('vehicles.length:', vehicles.value.length)
   console.log('Filtros iniciales:', store.filters)
-  console.log('Filtered inicial:', store.filteredVehicles.length)
-  console.log('Paginated inicial:', paginatedVehicles.length)
-  console.log('Current page:', currentPage.value, 'Total pages:', totalPages.value)
-  console.log('=== FIN DEBUG ===')
+  console.log('Filtered inicial:', filteredVehicles.value.length)
+  console.log('Paginated inicial:', paginatedVehicles.value.length)
+  console.log('=== FIN DEBUG VEHICLELIST ===')
 })
 
-// Para volver a usar la API real, cambia a:
-// onMounted(() => {
-//   store.loadVehicles()
-// })
+watch(paginatedVehicles, (newVal) => {
+  console.log('📋 VehicleList watch: paginatedVehicles changed to length', newVal.length, 'makes:', newVal.map(v => v.make || 'N/A'))
+}, { immediate: true })
 
 function goToDetail(id: number | string) {
   router.push(`/vehicles/${id}`)
 }
 
-// SortIcon igual que antes
-const SortIcon = {
-  props: {
-    asc: Boolean,
-    active: Boolean
-  },
-  template: `
-    <span v-if="active" class="sort-icon" aria-label="Orden">
-      {{ asc ? '▲' : '▼' }}
-    </span>
-  `
+function clearFilters() {
+  store.clearFilters()
 }
 </script>
 
-<!-- Agrega al final del <style scoped> -->
 <style scoped>
-/* ... estilos existentes ... */
 
-.debug-info {
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.debug-info p {
-  margin: 0.25rem 0;
-  color: #666;
-}
-</style>
-
-<style scoped>
 .vehicles-table {
   width: 100%;
   border-collapse: collapse;
@@ -203,4 +212,91 @@ button:hover:not(:disabled) {
   color: #007bff;
 }
 
+.debug-info {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.debug-info p {
+  margin: 0.25rem 0;
+  color: #666;
+} 
+
+/* Nuevos estilos para modal */
+.filters-toggle {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 1em;
+  font-size: 1em;
+}
+
+.filters-toggle:hover {
+  background-color: #0056b3;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);  /* Fondo gris semi-transparente */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;  /* Animación suave */
+}
+
+.modal-content {
+  background: white;
+  padding: 1.5em;
+  border-radius: 8px;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;  /* Scroll si muchos filtros */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.5em;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  color: #d9534f;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 </style>

@@ -2,45 +2,25 @@
   <div>
     <h1>Gestor de Vehículos</h1>
     <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-      <!-- Panel lateral de filtros -->
-      <FiltersPanel />
-
-      <!-- Tabla de vehículos -->
-      <div style="flex: 1;">
-        <TablaVehiculos @select="goToVehicle" />
-      </div>
+      
+      <!-- VehicleList como hijo principal (integra filtros + tabla) -->
+      <VehicleList @select="goToVehicle" />
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useVehiclesStore } from '../stores/vehicles'
-import TablaVehiculos from '../components/TablaVehiculos.vue'
-import FiltersPanel from '../components/FiltersPanel.vue'
+import VehicleList from '../components/VehicleList.vue'  // Importa VehicleList
 
-console.log('VehiculosView.vue cargado')
-
-const store = useVehiclesStore()
 const router = useRouter()
 
-// Cargar vehículos simulados al montar la vista (temporal)
-onMounted(() => {
-  store.loadSimulatedVehicles()
-  console.log('Vehículos cargados:', store.vehicles)
-})
-// Para volver a usar la API real, cambia a:
-// onMounted(() => {
-//   store.loadVehicles()
-// })
-
-// Función para navegar al detalle del vehículo seleccionado
+// Función para navegar (si @select en VehicleList)
 function goToVehicle(vehicle: any) {
   router.push(`/vehicles/${vehicle.id}`)
 }
 </script>
 
 <style scoped>
-/* Opcional: estilos para mejorar presentación */
+
 </style>
